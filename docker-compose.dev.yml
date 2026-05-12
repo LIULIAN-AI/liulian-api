@@ -1,0 +1,46 @@
+#
+# Day-1 dev stack: plain Postgres (NOT TimescaleDB yet — ADR 0003).
+# Adds Redis + MinIO so day-2 services can hook in without changes.
+#
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: liulian
+      POSTGRES_PASSWORD: liulian
+      POSTGRES_DB: liulian_api
+    ports: ['5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U liulian -d liulian_api']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ['9000:9000', '9001:9001']
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      retries: 5
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:

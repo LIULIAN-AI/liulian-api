@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 
 from liulian_api import __version__
 from liulian_api.config import get_settings
-from liulian_api.routers import health, models
+from liulian_api.routers import experiments, forecasts, health, models
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(models.router)
+    app.include_router(experiments.router)
+    app.include_router(forecasts.router)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(_: Any, exc: Exception) -> JSONResponse:

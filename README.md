@@ -45,7 +45,8 @@ for the Spring Boot → FastAPI pattern translation.
 
 All settings via `LIULIAN_API_*` env vars or `.env`. See
 `liulian_api/config.py`. CORS env-var name (`LIULIAN_API_CORS_ALLOWED_ORIGINS`)
-mirrors neobanker's convention (ADR 0009).
+mirrors the operational convention LIULIAN's deploy CLI inherits from
+neoctl (see ADR 0009 for the Spring Boot → FastAPI translation).
 
 ## License
 

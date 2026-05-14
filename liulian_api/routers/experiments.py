@@ -4,8 +4,9 @@ Sprint Day 2: CRUD over experiments. Day 1 already shipped /models;
 this adds /experiments + /experiments/{id} + /experiments/{id}/run.
 
 Per ADR 0009, the pagination contract is `{items, total, page, page_size}`
-and the error envelope is `{code, message, details}` — both inherited
-verbatim from neobanker-backend-MVP-V2.
+and the error envelope is `{code, message, details}` — both adopted as
+LIULIAN's standard API shape (Spring-Boot-style API contracts translated
+to FastAPI; see ADR 0009 for full pattern translation).
 
 Storage on Day 1: in-memory dict; Day 2 sprint adds SQLModel + Postgres
 + Alembic migration. Storage swap is a single file change; the API
@@ -27,7 +28,7 @@ T = TypeVar('T')
 
 
 class Page(BaseModel, Generic[T]):
-    """Pagination envelope, mirrors neobanker contract verbatim (ADR 0009)."""
+    """Pagination envelope — LIULIAN standard contract (ADR 0009)."""
 
     items: list[T]
     total: int

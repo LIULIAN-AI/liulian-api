@@ -2,7 +2,8 @@
 
 Per ADR 0003 (TimescaleDB), Day-1 sprint uses plain Postgres; TimescaleDB
 extension is enabled after M1 demo ships. Per ADR 0009 (Spring Boot →
-FastAPI), the env-var vocabulary mirrors neobanker for operator continuity.
+FastAPI), the env-var vocabulary follows LIULIAN's standard naming
+(LIULIAN_API_* prefix) for cross-service operator continuity.
 """
 
 from __future__ import annotations
@@ -57,7 +58,7 @@ class Settings(BaseSettings):
     # Auth (Day-1 uses bearer-token stub; Clerk wired at M2+)
     demo_token: str = 'demo-only-not-for-production'
 
-    # CORS (env name mirrors neobanker convention; see ADR 0009)
+    # CORS (LIULIAN standard env-var convention; see ADR 0009)
     cors_allowed_origins: Annotated[list[str], BeforeValidator(_split_csv)] = Field(
         default_factory=lambda: ['http://localhost:3000', 'http://localhost:8080']
     )

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
+from liulian_api.data import swiss_river as _sr
 from liulian_api.routers.experiments import Page
 
 router = APIRouter(prefix='/datasets', tags=['datasets'])
@@ -144,5 +145,94 @@ async def preview_dataset(dataset_id: str, n_rows: int = 5) -> DatasetPreview:
             )
     raise HTTPException(
         status_code=404,
-        detail={'code': 'not_found', 'message': f'dataset {dataset_id!r} not registered', 'details': {}},
+        detail={'code': 'not_found', 'message': f'dataset preview {dataset_id!r} not registered', 'details': {}},
+    )
+
+
+# -------------------- swiss-river-1990 real data --------------------
+
+class StationCard(BaseModel):
+    id: str
+    label: str
+    field: str
+    unit: str = '°C'
+    n_observations: int
+    span_start: datetime
+    span_end: datetime
+    latest_value: float | None
+    delta_7d: float | None
+
+
+class TimeseriesPoint(BaseModel):
+    t: datetime
+    v: float | None
+
+
+class TimeseriesResponse(BaseModel):
+    dataset_id: str
+    station_id: str
+    field: str
+    unit: str
+    points: list[TimeseriesPoint]
+
+
+def _stations_payload(name: str) -> list[StationCard]:
+    out: list[StationCard] = []
+    for sid in _sr.list_stations(name):
+        s = _sr.station_series(name, sid, 'wt')
+        clean = [(t, v) for t, v in zip(s.timestamps, s.values) if v is not None]
+        if not clean:
+            continue
+        latest = clean[-1][1]
+        delta_7d: float | None = None
+        if len(clean) >= 8:
+            delta_7d = round(latest - clean[-8][1], 2)
+        out.append(
+            StationCard(
+                id=sid,
+                label=f'Station {sid}',
+                field='wt',
+                n_observations=len(clean),
+                span_start=clean[0][0],
+                span_end=clean[-1][0],
+                latest_value=round(latest, 2),
+                delta_7d=delta_7d,
+            )
+        )
+    return out
+
+
+@router.get('/{dataset_id}/stations', response_model=list[StationCard])
+async def list_swiss_stations(dataset_id: str) -> list[StationCard]:
+    if dataset_id != 'swiss-river-1990':
+        raise HTTPException(status_code=404, detail={'code': 'not_found', 'message': f'no station list for {dataset_id!r}', 'details': {}})
+    try:
+        return _stations_payload('swiss-1990')
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail={'code': 'data_unavailable', 'message': str(e), 'details': {}}) from e
+
+
+@router.get('/{dataset_id}/timeseries', response_model=TimeseriesResponse)
+async def get_timeseries(
+    dataset_id: str,
+    station_id: str,
+    field: str = 'wt',
+    days: int = 365,
+) -> TimeseriesResponse:
+    if dataset_id != 'swiss-river-1990':
+        raise HTTPException(status_code=404, detail={'code': 'not_found', 'message': f'no timeseries for {dataset_id!r}', 'details': {}})
+    try:
+        s = _sr.station_series('swiss-1990', station_id, field)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail={'code': 'unknown_station', 'message': str(e), 'details': {}}) from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail={'code': 'data_unavailable', 'message': str(e), 'details': {}}) from e
+
+    points = list(zip(s.timestamps, s.values))[-days:]
+    return TimeseriesResponse(
+        dataset_id=dataset_id,
+        station_id=station_id,
+        field=field,
+        unit='°C' if field in ('wt', 'at') else 'unknown',
+        points=[TimeseriesPoint(t=t, v=v) for t, v in points],
     )
